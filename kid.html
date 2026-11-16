@@ -190,6 +190,14 @@
     font-weight: bold;
     text-align: center;
   }
+  .key:active, .opt:active {
+    background: #000;
+    color: #fff;
+  }
+  .primary:active {
+    background: #fff;
+    color: #000;
+  }
   .codebox {
     border-collapse: separate;
     border-spacing: 10px;
@@ -411,7 +419,7 @@
     var i;
     for (i = 0; i < 6; i++) {
       var ch = state.code.charAt(i);
-      cells = cells + '<td class="codecell">' + (ch ? ch : '&nbsp;') + '</td>';
+      cells = cells + '<td class="codecell" id="c' + i + '">' + (ch ? ch : '&nbsp;') + '</td>';
     }
     var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清空', '0', '删除'];
     var rows = '';
@@ -429,7 +437,7 @@
     html = html + '<h1 class="title">输入 6 位学习码</h1>';
     html = html + '<p class="hint">学习码由家长提供，本次演示为 123456。</p>';
     html = html + '<table class="codebox"><tr>' + cells + '</tr></table>';
-    html = html + '<p class="err">' + state.message + '</p>';
+    html = html + '<p class="err" id="msg">' + state.message + '</p>';
     html = html + '<table class="keypad">' + rows + '</table>';
     html = html + '<button type="button" class="primary" id="loginBtn"' + (state.code.length === 6 ? '' : ' disabled="disabled"') + '>进入学习</button>';
     html = html + '<p class="smallnote">这是真机测试版，学习记录只保存在这台设备上，不会上传。</p>';
@@ -511,21 +519,52 @@
       }
       html = html + '<button type="button" class="' + cls + '" id="opt' + i + '">' + q.options[i].label + '</button>';
     }
-    html = html + '<div class="feedback">';
+    html = html + '<div class="feedback" id="feedback">';
     if (state.answered) {
-      if (state.selected === q.answerKey) {
-        html = html + '答对了。';
-      } else {
-        html = html + '这次不对，正确答案是「' + q.answerLabel + '」。';
-      }
+      html = html + feedbackText(q);
     } else {
       html = html + '&nbsp;';
     }
     html = html + '</div>';
+    html = html + '<div id="nextWrap">';
     if (state.answered) {
       html = html + '<button type="button" class="primary" id="nextBtn">' + nextLabel() + '</button>';
     }
+    html = html + '</div>';
     return html;
+  }
+
+  function feedbackText(q) {
+    if (state.selected === q.answerKey) {
+      return '答对了。';
+    }
+    return '这次不对，正确答案是「' + q.answerLabel + '」。';
+  }
+
+  function updateQuestion() {
+    var q = makeQuestion(currentItem(), currentSeq());
+    var i;
+    for (i = 0; i < q.options.length; i++) {
+      var el = document.getElementById('opt' + i);
+      if (el) {
+        if (q.options[i].correct) {
+          el.className = 'opt ok2';
+        } else if (state.selected === q.options[i].key) {
+          el.className = 'opt bad';
+        } else {
+          el.className = 'opt';
+        }
+      }
+    }
+    var fb = document.getElementById('feedback');
+    if (fb) {
+      fb.innerHTML = feedbackText(q);
+    }
+    var wrap = document.getElementById('nextWrap');
+    if (wrap && !document.getElementById('nextBtn')) {
+      wrap.innerHTML = '<button type="button" class="primary" id="nextBtn">' + nextLabel() + '</button>';
+      onTap(document.getElementById('nextBtn'), advance);
+    }
   }
 
   function viewResult() {
@@ -570,6 +609,29 @@
     bindCurrent();
   }
 
+  function updateLogin() {
+    var i;
+    for (i = 0; i < 6; i++) {
+      var cell = document.getElementById('c' + i);
+      if (cell) {
+        var ch = state.code.charAt(i);
+        if (typeof cell.textContent === 'string') {
+          cell.textContent = ch ? ch : '';
+        } else {
+          cell.innerHTML = ch ? ch : '&nbsp;';
+        }
+      }
+    }
+    var msg = document.getElementById('msg');
+    if (msg) {
+      msg.innerHTML = state.message;
+    }
+    var btn = document.getElementById('loginBtn');
+    if (btn) {
+      btn.disabled = (state.code.length !== 6);
+    }
+  }
+
   function pressKey(k) {
     state.message = '';
     if (k === '清空') {
@@ -579,7 +641,7 @@
     } else if (state.code.length < 6) {
       state.code = state.code + k;
     }
-    render();
+    updateLogin();
   }
 
   function doLogin() {
@@ -656,7 +718,7 @@
         state.retry.push(currentItem());
       }
     }
-    render();
+    updateQuestion();
   }
 
   function finish() {
@@ -700,103 +762,94 @@
     finish();
   }
 
+  function onTap(el, fn) {
+    if (!el) {
+      return;
+    }
+    var last = 0;
+    if ('ontouchend' in el) {
+      el.ontouchend = function (e) {
+        last = new Date().getTime();
+        if (e && e.preventDefault) {
+          e.preventDefault();
+        }
+        fn();
+      };
+    }
+    el.onclick = function () {
+      var now = new Date().getTime();
+      if (now - last < 900) {
+        return;
+      }
+      last = now;
+      fn();
+    };
+  }
+
   function bindCurrent() {
     var i;
     if (state.screen === 'login') {
       var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清空', '0', '删除'];
       for (i = 0; i < 12; i++) {
         (function (id, label) {
-          var el = document.getElementById(id);
-          if (el) {
-            el.onclick = function () {
-              pressKey(label);
-            };
-          }
+          onTap(document.getElementById(id), function () {
+            pressKey(label);
+          });
         })('k' + Math.floor(i / 3) + '' + (i % 3), keys[i]);
       }
-      var loginBtn = document.getElementById('loginBtn');
-      if (loginBtn) {
-        loginBtn.onclick = doLogin;
-      }
+      onTap(document.getElementById('loginBtn'), doLogin);
       return;
     }
     if (state.screen === 'home') {
-      var startBtn = document.getElementById('startBtn');
-      if (startBtn) {
-        startBtn.onclick = function () {
-          if (state.started) {
-            resume();
-          } else {
-            startTask();
-          }
-        };
-      }
-      var resultBtn = document.getElementById('resultBtn');
-      if (resultBtn) {
-        resultBtn.onclick = function () {
-          state.screen = 'result';
-          render();
-        };
-      }
-      var logoutBtn = document.getElementById('logoutBtn');
-      if (logoutBtn) {
-        logoutBtn.onclick = function () {
-          try {
-            window.localStorage.removeItem(LS_KEY);
-          } catch (e) {}
-          state = defaultState();
-          render();
-        };
-      }
+      onTap(document.getElementById('startBtn'), function () {
+        if (state.started) {
+          resume();
+        } else {
+          startTask();
+        }
+      });
+      onTap(document.getElementById('resultBtn'), function () {
+        state.screen = 'result';
+        render();
+      });
+      onTap(document.getElementById('logoutBtn'), function () {
+        try {
+          window.localStorage.removeItem(LS_KEY);
+        } catch (e) {}
+        state = defaultState();
+        render();
+      });
       return;
     }
     if (state.screen === 'card') {
-      var knowBtn = document.getElementById('knowBtn');
-      if (knowBtn) {
-        knowBtn.onclick = function () {
-          state.screen = 'question';
-          state.answered = false;
-          state.selected = '';
-          state.pausedScreen = '';
-          save();
-          render();
-        };
-      }
-      var pauseBtn1 = document.getElementById('pauseBtn');
-      if (pauseBtn1) {
-        pauseBtn1.onclick = pause;
-      }
+      onTap(document.getElementById('knowBtn'), function () {
+        state.screen = 'question';
+        state.answered = false;
+        state.selected = '';
+        state.pausedScreen = '';
+        save();
+        render();
+      });
+      onTap(document.getElementById('pauseBtn'), pause);
       return;
     }
     if (state.screen === 'question') {
       for (i = 0; i < 4; i++) {
         (function (idx) {
-          var el = document.getElementById('opt' + idx);
-          if (el) {
-            el.onclick = function () {
-              chooseOption(idx);
-            };
-          }
+          onTap(document.getElementById('opt' + idx), function () {
+            chooseOption(idx);
+          });
         })(i);
       }
-      var nextBtn = document.getElementById('nextBtn');
-      if (nextBtn) {
-        nextBtn.onclick = advance;
-      }
-      var pauseBtn2 = document.getElementById('pauseBtn');
-      if (pauseBtn2) {
-        pauseBtn2.onclick = pause;
-      }
+      onTap(document.getElementById('nextBtn'), advance);
+      onTap(document.getElementById('pauseBtn'), pause);
       return;
     }
-    var homeBtn = document.getElementById('homeBtn');
-    if (homeBtn) {
-      homeBtn.onclick = function () {
-        state.screen = 'home';
-        save();
-        render();
-      };
-    }
+    onTap(document.getElementById('homeBtn'), function () {
+      state.screen = 'home';
+      save();
+      render();
+    });
   }
 
   load();
