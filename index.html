@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindle 兼容性检测</title>
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    background: #fff;
+    color: #000;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  #wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  h2 { font-size: 21px; margin: 30px 0 12px; padding-top: 12px; border-top: 2px solid #000; }
+  p { margin: 8px 0; }
+  .note { border: 2px dashed #000; padding: 10px 12px; font-size: 16px; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  th, td { border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top; font-size: 16px; }
+  th { background: #000; color: #fff; font-weight: bold; }
+  .ok { display: inline-block; padding: 2px 8px; background: #000; color: #fff; font-weight: bold; white-space: nowrap; }
+  .no { display: inline-block; padding: 2px 8px; border: 2px solid #000; font-weight: bold; white-space: nowrap; }
+  .warn { display: inline-block; padding: 2px 8px; border: 2px dashed #000; white-space: nowrap; }
+  .big {
+    display: block; width: 100%; min-height: 64px; margin: 12px 0; padding: 12px;
+    border: 2px solid #000; background: #fff; color: #000;
+    font-family: inherit; font-size: 20px; font-weight: bold; text-align: center;
+  }
+  .opt {
+    display: block; width: 100%; min-height: 62px; margin: 8px 0; padding: 12px 16px;
+    border: 2px solid #000; background: #fff; color: #000;
+    font-family: inherit; font-size: 19px; font-weight: bold; text-align: left;
+  }
+  .opt.sel, .big.sel { background: #000; color: #fff; }
+  .cell {
+    display: inline-block; width: 40px; height: 52px; line-height: 52px; margin-right: 6px;
+    border: 2px solid #000; text-align: center; font-size: 26px; font-weight: bold; vertical-align: middle;
+  }
+  .keypad { width: 100%; border-collapse: separate; border-spacing: 6px; margin: 8px 0; }
+  .keypad td { border: 0; padding: 0; width: 33%; }
+  .key {
+    width: 100%; min-height: 58px; border: 2px solid #000; background: #fff; color: #000;
+    font-family: inherit; font-size: 22px; font-weight: bold;
+  }
+  .probe { position: absolute; left: -9999px; top: 0; }
+  #summary {
+    white-space: pre-wrap; word-break: break-all;
+    border: 2px solid #000; padding: 12px; margin: 10px 0;
+    font-family: inherit; font-size: 16px; line-height: 1.7;
+  }
+  ul { margin: 8px 0; padding-left: 22px; }
+  li { margin: 6px 0; }
+  .muted { font-size: 15px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <h1>Kindle 兼容性检测</h1>
+  <p class="muted">用 Kindle 自带的「网页浏览器」打开本页，从上往下看，最后把「结果汇总」截图给开发。</p>
+  <div class="note">本页只做本地检测，不会上传任何数据。请用 http 或 https 地址打开，不要用本地文件。</div>
+
+  <h2>1. 设备信息</h2>
+  <table>
+    <tbody>
+      <tr><td style="width:34%">屏幕分辨率</td><td id="d-screen">…</td></tr>
+      <tr><td>页面可视宽度</td><td id="d-win">…</td></tr>
+      <tr><td>页面 / 屏幕宽度比</td><td id="d-ratio">…</td></tr>
+      <tr><td>设备像素比</td><td id="d-dpr">…</td></tr>
+      <tr><td>渲染模式</td><td id="d-mode">…</td></tr>
+      <tr><td>当前时间</td><td id="d-time">…</td></tr>
+      <tr><td>时区偏移</td><td id="d-tz">…</td></tr>
+      <tr><td>浏览器标识</td><td id="d-ua" style="font-size:13px;word-break:break-all;">…</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. 能力检测</h2>
+  <table>
+    <thead>
+      <tr><th style="width:42%">检测项</th><th style="width:24%">结果</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>JavaScript 执行</td><td id="r-js">…</td><td>本页脚本能否运行</td></tr>
+      <tr><td>ES5 基础能力</td><td id="r-es5">…</td><td>JSON、forEach、Object.keys</td></tr>
+      <tr><td>ES6 语法</td><td id="r-es6">…</td><td>箭头函数等新语法</td></tr>
+      <tr><td>CSS Flexbox</td><td id="r-flex">…</td><td>横向弹性布局</td></tr>
+      <tr><td>CSS Grid</td><td id="r-grid">…</td><td>网格布局</td></tr>
+      <tr><td>圆角边框</td><td id="r-radius">…</td><td>border-radius</td></tr>
+      <tr><td>vw / vh 单位</td><td id="r-vw">…</td><td>视口相对单位</td></tr>
+      <tr><td>XMLHttpRequest</td><td id="r-xhr">…</td><td>局部刷新依赖</td></tr>
+      <tr><td>FormData</td><td id="r-formdata">…</td><td>表单数据封装</td></tr>
+      <tr><td>JSON</td><td id="r-json">…</td><td>接口数据解析</td></tr>
+      <tr><td>localStorage</td><td id="r-ls">…</td><td>本地缓存</td></tr>
+      <tr><td>Cookie 可写入</td><td id="r-cookie">…</td><td>记住学习码</td></tr>
+      <tr><td>Canvas</td><td id="r-canvas">…</td><td>绘图能力</td></tr>
+      <tr><td>placeholder</td><td id="r-placeholder">…</td><td>输入框提示文字</td></tr>
+      <tr><td>number 输入框</td><td id="r-num">…</td><td>数字键盘输入</td></tr>
+      <tr><td>addEventListener</td><td id="r-ael">…</td><td>事件绑定方式</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. 点按与阅读</h2>
+  <p>正常字号（18px）：今天学习 5 个新词，还有 3 个复习词。</p>
+  <p style="font-size:22px;">放大字号（22px）：apple 苹果</p>
+  <p style="font-size:28px;font-weight:bold;">单词字号（28px）：apple</p>
+  <button type="button" class="big" id="tapBtn">点我一下（已点 0 次）</button>
+  <p class="muted" id="tapHint">连续点 5 次，看是否每次都响应、有没有点空。</p>
+
+  <h2>4. 选择题样式</h2>
+  <p class="muted">点一个选项，检查选中后是否变成黑底白字。</p>
+  <button type="button" class="opt" id="opt0">A. 苹果</button>
+  <button type="button" class="opt" id="opt1">B. 香蕉</button>
+  <button type="button" class="opt" id="opt2">C. 书包</button>
+  <button type="button" class="opt" id="opt3">D. 铅笔</button>
+  <p class="muted" id="optHint">尚未选择</p>
+
+  <h2>5. 数字键盘输入</h2>
+  <p class="muted">模拟孩子输入 6 位学习码，检查按钮是否好按。</p>
+  <div id="codeBox"></div>
+  <p id="keypadHint" class="muted">已输入 0 / 6 位</p>
+  <div id="keypadWrap"></div>
+
+  <h2>6. 数据保存</h2>
+  <table>
+    <tbody>
+      <tr><td style="width:34%">Cookie（刷新后）</td><td id="cookieStatus">…</td></tr>
+      <tr><td>localStorage（刷新后）</td><td id="lsStatus">…</td></tr>
+    </tbody>
+  </table>
+  <button type="button" class="big" id="writeStorage">写入测试数据</button>
+  <p class="muted">写入后请刷新页面（浏览器菜单里的刷新），再回来看上面两行是否仍然显示「已保留」。</p>
+
+  <h2>7. 网络与表单提交</h2>
+  <p><strong>局部刷新测试：</strong></p>
+  <div id="xhrResult">尚未测试</div>
+  <button type="button" class="big" id="runXhr">发起一次局部请求</button>
+  <p><strong>整页提交测试：</strong></p>
+  <div id="formResult">尚未测试</div>
+  <form id="testForm" method="get" action="">
+    <input type="hidden" name="formtest" value="1">
+    <button type="submit" class="big" id="runForm">提交表单并重新加载</button>
+  </form>
+  <p class="muted">提交会让页面重新加载，页面上的计数会清零，这是正常的。</p>
+
+  <h2>8. 人工观察项</h2>
+  <ul>
+    <li>□ 文字直接看清，不需要放大页面</li>
+    <li>□ 页面没有横向超出屏幕，不需要左右拖动</li>
+    <li>□ 点击按钮有明显反馈，没有点空</li>
+    <li>□ 刷新页面后，等待时间可以接受</li>
+    <li>□ 页面刷新时没有严重的黑屏闪烁</li>
+  </ul>
+
+  <h2>9. 结果汇总</h2>
+  <p class="muted">把下面这块内容整段截图即可。</p>
+  <pre id="summary">检测中…</pre>
+  <button type="button" class="big" id="reloadBtn">刷新页面重新检测</button>
+
+</div>
+
+<script>
+(function () {
+  var results = [];
+  var sec = document.createElement('div');
+  sec.className = 'probe';
+  document.body.appendChild(sec);
+
+  function add(name, status, detail) {
+    results.push({ name: name, status: status, detail: detail || '' });
+  }
+
+  function badge(status, text) {
+    var cls = status === 'pass' ? 'ok' : (status === 'fail' ? 'no' : 'warn');
+    return '<span class="' + cls + '">' + text + '</span>';
+  }
+
+  function setHtml(id, html) {
+    var el = document.getElementById(id);
+    if (el) { el.innerHTML = html; }
+  }
+
+  function readCookie(name) {
+    var parts = document.cookie ? document.cookie.split(';') : [];
+    for (var i = 0; i < parts.length; i++) {
+      var item = parts[i].replace(/^\s+/, '');
+      if (item.indexOf(name + '=') === 0) { return item.substring(name.length + 1); }
+    }
+    return '';
+  }
+
+  function layoutTest(display, template) {
+    var box = document.createElement('div');
+    box.style.display = display;
+    box.style.width = '300px';
+    box.style.margin = '0';
+    box.style.padding = '0';
+    if (template) { box.style.gridTemplateColumns = template; }
+    for (var i = 0; i < 3; i++) {
+      var cell = document.createElement('div');
+      cell.style.width = '80px';
+      cell.style.height = '20px';
+      cell.style.margin = '0';
+      cell.style.padding = '0';
+      box.appendChild(cell);
+    }
+    sec.appendChild(box);
+    var sideBySide = box.offsetHeight < 40;
+    sec.removeChild(box);
+    return sideBySide;
+  }
+
+  /* ---------- 1. 设备信息 ---------- */
+
+  var sw = screen.width;
+  var sh = screen.height;
+  var ww = document.documentElement.clientWidth;
+  var dpr = window.devicePixelRatio || 1;
+  var now = new Date();
+
+  setHtml('d-screen', sw + ' x ' + sh + ' px');
+  setHtml('d-win', ww + ' px');
+  setHtml('d-ratio', (ww / sw).toFixed(2));
+  setHtml('d-dpr', String(dpr));
+  setHtml('d-mode', document.compatMode === 'CSS1Compat' ? '标准模式' : '怪异模式');
+  setHtml('d-time', now.toString());
+  setHtml('d-tz', 'UTC' + (now.getTimezoneOffset() > 0 ? '-' : '+') + Math.abs(now.getTimezoneOffset() / 60) + '（比 UTC 少 ' + now.getTimezoneOffset() + ' 分钟）');
+  setHtml('d-ua', navigator.userAgent);
+
+  /* ---------- 2. 能力检测 ---------- */
+
+  var jsOk = true;
+  add('JavaScript 执行', 'pass', '');
+  setHtml('r-js', badge('pass', '通过'));
+
+  var es5 = false;
+  try {
+    es5 = (typeof JSON !== 'undefined') && (typeof [].forEach === 'function') && (typeof Object.keys === 'function');
+  } catch (e1) { es5 = false; }
+  add('ES5 基础能力', es5 ? 'pass' : 'fail', '');
+  setHtml('r-es5', es5 ? badge('pass', '通过') : badge('fail', '不支持'));
+
+  var es6 = false;
+  try {
+    eval('var kvTmpA = function (x) { return x; }; var kvTmpB = (x) => x; kvTmpB(1);');
+    es6 = true;
+  } catch (e2) { es6 = false; }
+  add('ES6 语法', es6 ? 'pass' : 'fail', '');
+  setHtml('r-es6', es6 ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var flexOk = layoutTest('flex', null);
+  add('CSS Flexbox', flexOk ? 'pass' : 'fail', '');
+  setHtml('r-flex', flexOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var gridOk = layoutTest('grid', '1fr 1fr 1fr');
+  add('CSS Grid', gridOk ? 'pass' : 'fail', '');
+  setHtml('r-grid', gridOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var styleProbe = document.createElement('div');
+  var radiusOk = ('borderRadius' in styleProbe.style) || ('WebkitBorderRadius' in styleProbe.style);
+  add('圆角边框', radiusOk ? 'pass' : 'fail', '');
+  setHtml('r-radius', radiusOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var vwProbe = document.createElement('div');
+  vwProbe.style.width = '10vw';
+  var vwOk = vwProbe.style.width !== '';
+  add('vw / vh 单位', vwOk ? 'pass' : 'fail', '');
+  setHtml('r-vw', vwOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var xhrOk = false;
+  try { var probeXhr = new XMLHttpRequest(); xhrOk = !!probeXhr; } catch (e3) { xhrOk = false; }
+  add('XMLHttpRequest', xhrOk ? 'pass' : 'fail', '');
+  setHtml('r-xhr', xhrOk ? badge('pass', '可用') : badge('fail', '不可用'));
+
+  var formDataOk = typeof FormData !== 'undefined';
+  add('FormData', formDataOk ? 'pass' : 'fail', '');
+  setHtml('r-formdata', formDataOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var jsonOk = (typeof JSON !== 'undefined') && (typeof JSON.stringify === 'function') && (typeof JSON.parse === 'function');
+  add('JSON', jsonOk ? 'pass' : 'fail', '');
+  setHtml('r-json', jsonOk ? badge('pass', '可用') : badge('fail', '不可用'));
+
+  var lsOk = false;
+  try {
+    window.localStorage.setItem('kv_ls_write_test', '1');
+    lsOk = window.localStorage.getItem('kv_ls_write_test') === '1';
+    window.localStorage.removeItem('kv_ls_write_test');
+  } catch (e4) { lsOk = false; }
+  add('localStorage', lsOk ? 'pass' : 'fail', '');
+  setHtml('r-ls', lsOk ? badge('pass', '可写') : badge('fail', '不可写'));
+
+  var cookieOk = false;
+  try {
+    document.cookie = 'kv_write_test=1; path=/';
+    cookieOk = document.cookie.indexOf('kv_write_test=1') !== -1;
+    document.cookie = 'kv_write_test=; path=/; max-age=0';
+  } catch (e5) { cookieOk = false; }
+  add('Cookie 可写入', cookieOk ? 'pass' : 'fail', '');
+  setHtml('r-cookie', cookieOk ? badge('pass', '可写') : badge('fail', '不可写'));
+
+  var canvasOk = false;
+  try {
+    var cv = document.createElement('canvas');
+    canvasOk = !!(cv.getContext && cv.getContext('2d'));
+  } catch (e6) { canvasOk = false; }
+  add('Canvas', canvasOk ? 'pass' : 'fail', '');
+  setHtml('r-canvas', canvasOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var placeholderOk = ('placeholder' in document.createElement('input'));
+  add('placeholder', placeholderOk ? 'pass' : 'fail', '');
+  setHtml('r-placeholder', placeholderOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var numProbe = document.createElement('input');
+  numProbe.setAttribute('type', 'number');
+  var numOk = numProbe.type === 'number';
+  add('number 输入框', numOk ? 'pass' : 'fail', '');
+  setHtml('r-num', numOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  var aelOk = typeof document.addEventListener === 'function';
+  add('addEventListener', aelOk ? 'pass' : 'fail', '');
+  setHtml('r-ael', aelOk ? badge('pass', '支持') : badge('fail', '不支持'));
+
+  /* ---------- 3. 点按 ---------- */
+
+  var taps = 0;
+  var tapBtn = document.getElementById('tapBtn');
+  tapBtn.onclick = function () {
+    taps = taps + 1;
+    tapBtn.innerHTML = '点我一下（已点 ' + taps + ' 次）';
+    tapBtn.className = taps >= 5 ? 'big sel' : 'big';
+    setHtml('tapHint', taps >= 5
+      ? '已记录 5 次点击，按钮正常。'
+      : '已点 ' + taps + ' 次，继续点到 5 次。');
+  };
+
+  /* ---------- 4. 选项 ---------- */
+
+  var optButtons = [
+    document.getElementById('opt0'),
+    document.getElementById('opt1'),
+    document.getElementById('opt2'),
+    document.getElementById('opt3')
+  ];
+  for (var oi = 0; oi < optButtons.length; oi++) {
+    (function (index) {
+      optButtons[index].onclick = function () {
+        for (var j = 0; j < optButtons.length; j++) {
+          optButtons[j].className = (j === index) ? 'opt sel' : 'opt';
+        }
+        setHtml('optHint', '已选择 ' + ['A. 苹果', 'B. 香蕉', 'C. 书包', 'D. 铅笔'][index] + '，如果这里显示黑底白字则样式正常。');
+      };
+    })(oi);
+  }
+
+  /* ---------- 5. 数字键盘 ---------- */
+
+  var code = '';
+  function renderCode() {
+    var html = '';
+    for (var i = 0; i < 6; i++) {
+      html += '<span class="cell">' + (code.charAt(i) || '&nbsp;') + '</span>';
+    }
+    setHtml('codeBox', html);
+  }
+
+  function handleKey(key) {
+    if (key === '清空') {
+      code = '';
+    } else if (key === '删除') {
+      code = code.substring(0, code.length - 1);
+    } else if (code.length < 6) {
+      code = code + key;
+    }
+    renderCode();
+    setHtml('keypadHint', code.length === 6
+      ? '<b>已输入完整学习码：' + code + '</b>'
+      : '已输入 ' + code.length + ' / 6 位');
+  }
+
+  var keyLabels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清空', '0', '删除'];
+  var keyHtml = '<table class="keypad">';
+  for (var kr = 0; kr < 4; kr++) {
+    keyHtml += '<tr>';
+    for (var kc = 0; kc < 3; kc++) {
+      var label = keyLabels[kr * 3 + kc];
+      keyHtml += '<td><button type="button" class="key" id="key-' + kr + '-' + kc + '">' + label + '</button></td>';
+    }
+    keyHtml += '</tr>';
+  }
+  keyHtml += '</table>';
+  setHtml('keypadWrap', keyHtml);
+
+  for (var kr2 = 0; kr2 < 4; kr2++) {
+    for (var kc2 = 0; kc2 < 3; kc2++) {
+      (function (id, text) {
+        var btn = document.getElementById(id);
+        if (btn) { btn.onclick = function () { handleKey(text); }; }
+      })('key-' + kr2 + '-' + kc2, keyLabels[kr2 * 3 + kc2]);
+    }
+  }
+  renderCode();
+
+  /* ---------- 6. 数据保存 ---------- */
+
+  var savedCookie = readCookie('kv_probe');
+  if (savedCookie) {
+    setHtml('cookieStatus', badge('pass', '已保留') + ' 值：' + savedCookie);
+    add('Cookie 刷新后保留', 'pass', savedCookie);
+  } else {
+    setHtml('cookieStatus', badge('warn', '未找到') + ' 尚未写入，或刷新后丢失');
+    add('Cookie 刷新后保留', 'fail', '未找到');
+  }
+
+  var savedLs = '';
+  try { savedLs = window.localStorage.getItem('kv_probe') || ''; } catch (e7) { savedLs = ''; }
+  if (savedLs) {
+    setHtml('lsStatus', badge('pass', '已保留') + ' 值：' + savedLs);
+    add('localStorage 刷新后保留', 'pass', savedLs);
+  } else {
+    setHtml('lsStatus', badge('warn', '未找到') + ' 尚未写入，或刷新后丢失');
+    add('localStorage 刷新后保留', 'fail', '未找到');
+  }
+
+  document.getElementById('writeStorage').onclick = function () {
+    var value = 'v' + Math.round(Math.random() * 999999);
+    try {
+      document.cookie = 'kv_probe=' + value + '; path=/; max-age=604800';
+    } catch (e8) {}
+    try {
+      window.localStorage.setItem('kv_probe', value);
+    } catch (e9) {}
+    var box = document.getElementById('writeStorage');
+    box.innerHTML = '已写入 ' + value + '，请刷新页面';
+    box.className = 'big sel';
+  };
+
+  /* ---------- 7. 网络与表单 ---------- */
+
+  var xhrResultStatus = 'unknown';
+
+  function runXhr() {
+    setHtml('xhrResult', badge('warn', '测试中…'));
+    if (!xhrOk) {
+      setHtml('xhrResult', badge('fail', '浏览器不支持 XMLHttpRequest'));
+      xhrResultStatus = 'fail';
+      renderSummary();
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    try {
+      xhr.open('GET', location.pathname + '?xhrprobe=' + (new Date()).getTime(), true);
+    } catch (e10) {
+      setHtml('xhrResult', badge('fail', '无法建立请求'));
+      xhrResultStatus = 'fail';
+      renderSummary();
+      return;
+    }
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200 || xhr.status === 304) {
+          setHtml('xhrResult', badge('pass', '通过 HTTP ' + xhr.status));
+          xhrResultStatus = 'pass';
+        } else if (xhr.status === 0) {
+          setHtml('xhrResult', badge('fail', '没有响应，可能被网络拦截'));
+          xhrResultStatus = 'fail';
+        } else {
+          setHtml('xhrResult', badge('warn', '请求已发出，HTTP ' + xhr.status));
+          xhrResultStatus = 'warn';
+        }
+        renderSummary();
+      }
+    };
+    try { xhr.send(null); } catch (e11) {
+      setHtml('xhrResult', badge('fail', '发送失败'));
+      xhrResultStatus = 'fail';
+      renderSummary();
+    }
+  }
+
+  document.getElementById('runXhr').onclick = runXhr;
+
+  var formPassed = location.search.indexOf('formtest=1') !== -1;
+  var formResultStatus = formPassed ? 'pass' : 'unknown';
+  if (formPassed) {
+    setHtml('formResult', badge('pass', '表单提交并重新加载成功'));
+  } else {
+    setHtml('formResult', badge('warn', '尚未测试'));
+  }
+
+  document.getElementById('reloadBtn').onclick = function () {
+    location.reload();
+  };
+
+  /* ---------- 9. 汇总 ---------- */
+
+  function statusText(status) {
+    if (status === 'pass') { return '通过'; }
+    if (status === 'fail') { return '不支持'; }
+    return '未测试';
+  }
+
+  function renderSummary() {
+    var lines = [];
+    lines.push('Kindle 兼容性检测结果');
+    lines.push('页面：' + location.href);
+    lines.push('时间：' + new Date().toString());
+    lines.push('屏幕：' + sw + 'x' + sh + '　页面宽：' + ww + '　比例：' + (ww / sw).toFixed(2) + '　DPR：' + dpr);
+    lines.push('模式：' + (document.compatMode === 'CSS1Compat' ? '标准' : '怪异'));
+    lines.push('UA：' + navigator.userAgent);
+    lines.push('');
+
+    for (var i = 0; i < results.length; i++) {
+      var item = results[i];
+      lines.push(item.name + '：' + statusText(item.status) + (item.detail ? '（' + item.detail + '）' : ''));
+    }
+
+    lines.push('');
+    lines.push('局部请求：' + statusText(xhrResultStatus));
+    lines.push('表单提交：' + statusText(formResultStatus));
+    lines.push('');
+    lines.push('【开发结论】');
+
+    if (xhrResultStatus === 'pass') {
+      lines.push('- 可以用局部刷新答题，减少整页翻新。');
+    } else {
+      lines.push('- 局部请求不可用或未验证，孩子端按整页表单提交设计。');
+    }
+    if (flexOk) {
+      lines.push('- 可以用 Flexbox 布局。');
+    } else {
+      lines.push('- 不要用 Flexbox / Grid，改用表格或 inline-block。');
+    }
+    if (lsOk) {
+      lines.push('- 可以用 localStorage 缓存。');
+    } else {
+      lines.push('- 不能用 localStorage，只依赖 Cookie 或每次输入学习码。');
+    }
+    if (cookieOk) {
+      lines.push('- Cookie 可写，可以记住设备。');
+    } else {
+      lines.push('- Cookie 不可写，需要每次输入学习码或改用链接参数。');
+    }
+    if (ww / sw > 1.15) {
+      lines.push('- 页面宽度明显大于屏幕，viewport 未生效，需要固定页面宽度。');
+    } else {
+      lines.push('- 页面宽度与屏幕匹配，viewport 正常。');
+    }
+
+    var el = document.getElementById('summary');
+    if (el) { el.innerHTML = lines.join('\n'); }
+  }
+
+  renderSummary();
+})();
+</script>
+</body>
+</html>
