@@ -27,6 +27,12 @@
     margin: 0 auto;
     padding: 40px;
   }
+  .panel {
+    display: none;
+  }
+  .panel.on {
+    display: block;
+  }
   button {
     font-family: inherit;
     -webkit-appearance: none;
@@ -256,7 +262,78 @@
 </style>
 </head>
 <body>
-<div id="app"><div id="screen"></div></div>
+<div id="app">
+
+  <div class="panel" id="p-login">
+    <table class="topbar"><tr><td>儿童学习入口</td><td class="right">家长请用家长端</td></tr></table>
+    <h1 class="title">输入 6 位学习码</h1>
+    <p class="hint">学习码由家长提供，本次演示为 123456。</p>
+    <table class="codebox"><tr>
+      <td class="codecell" id="c0">&nbsp;</td>
+      <td class="codecell" id="c1">&nbsp;</td>
+      <td class="codecell" id="c2">&nbsp;</td>
+      <td class="codecell" id="c3">&nbsp;</td>
+      <td class="codecell" id="c4">&nbsp;</td>
+      <td class="codecell" id="c5">&nbsp;</td>
+    </tr></table>
+    <p class="err" id="loginMsg">&nbsp;</p>
+    <table class="keypad">
+      <tr><td><button type="button" class="key" id="k00">1</button></td><td><button type="button" class="key" id="k01">2</button></td><td><button type="button" class="key" id="k02">3</button></td></tr>
+      <tr><td><button type="button" class="key" id="k10">4</button></td><td><button type="button" class="key" id="k11">5</button></td><td><button type="button" class="key" id="k12">6</button></td></tr>
+      <tr><td><button type="button" class="key" id="k20">7</button></td><td><button type="button" class="key" id="k21">8</button></td><td><button type="button" class="key" id="k22">9</button></td></tr>
+      <tr><td><button type="button" class="key" id="k30">清空</button></td><td><button type="button" class="key" id="k31">0</button></td><td><button type="button" class="key" id="k32">删除</button></td></tr>
+    </table>
+    <button type="button" class="primary" id="loginBtn" disabled="disabled">进入学习</button>
+    <p class="smallnote">输入一次后，这台设备会记住孩子，下次直接进入。</p>
+  </div>
+
+  <div class="panel" id="p-home">
+    <table class="topbar"><tr><td>你好，小小</td><td class="right" id="homeRight">今日任务</td></tr></table>
+    <h1 class="title" id="homeTitle">准备好学习了吗？</h1>
+    <p class="hint" id="homeHint">&nbsp;</p>
+    <div class="bigcard" id="homeCard" style="display:none">
+      <p class="bigline">连续学习 1 天</p>
+      <p class="bigline">获得 1 颗星</p>
+    </div>
+    <p class="hint" id="homeFoot" style="display:none">明天再来复习。现在可以回到 Kindle 看书。</p>
+    <button type="button" class="primary" id="startBtn">开始学习</button>
+    <button type="button" class="secondary" id="resultBtn" style="display:none">再看一次结果</button>
+    <button type="button" class="secondary" id="logoutBtn">退出学习入口</button>
+  </div>
+
+  <div class="panel" id="p-card">
+    <table class="topbar"><tr><td id="cardTop">&nbsp;</td><td class="right"><button type="button" class="small" id="pauseBtnCard">暂停</button></td></tr></table>
+    <div class="word" id="cardWord">&nbsp;</div>
+    <div class="meaning" id="cardMeaning">&nbsp;</div>
+    <div class="example" id="cardExample">&nbsp;</div>
+    <button type="button" class="primary" id="knowBtn">我认识了</button>
+  </div>
+
+  <div class="panel" id="p-question">
+    <table class="topbar"><tr><td id="qTop">&nbsp;</td><td class="right"><button type="button" class="small" id="pauseBtnQ">暂停</button></td></tr></table>
+    <p class="direction" id="qDirection">&nbsp;</p>
+    <div class="word" id="qPrompt">&nbsp;</div>
+    <button type="button" class="opt" id="opt0">&nbsp;</button>
+    <button type="button" class="opt" id="opt1">&nbsp;</button>
+    <button type="button" class="opt" id="opt2">&nbsp;</button>
+    <button type="button" class="opt" id="opt3">&nbsp;</button>
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <button type="button" class="primary" id="nextBtn" style="display:none">下一题</button>
+  </div>
+
+  <div class="panel" id="p-result">
+    <table class="topbar"><tr><td>本次学习结果</td><td class="right">已保存</td></tr></table>
+    <h1 class="title">任务完成，获得 1 颗星</h1>
+    <table class="stats"><tr>
+      <td><div class="num" id="rScore">&nbsp;</div><div class="cap">首次答对</div></td>
+      <td><div class="num">1 天</div><div class="cap">连续学习</div></td>
+    </tr></table>
+    <p class="hint" id="rWrong">&nbsp;</p>
+    <p class="hint">答错不扣星星，之后还会再见到这些词。</p>
+    <button type="button" class="primary" id="homeBtn">回到首页</button>
+  </div>
+
+</div>
 
 <script>
 (function () {
@@ -279,6 +356,7 @@
     return {
       screen: 'login',
       code: '',
+      bound: false,
       task: [],
       idx: 0,
       retry: [],
@@ -304,27 +382,38 @@
     }
     if (!raw) {
       state = defaultState();
-      return;
+    } else {
+      try {
+        var obj = JSON.parse(raw);
+        state = defaultState();
+        for (var k in obj) {
+          if (obj.hasOwnProperty(k)) {
+            state[k] = obj[k];
+          }
+        }
+        if (!state.task || !state.task.length) {
+          if (state.screen !== 'login' && state.screen !== 'home') {
+            state.screen = 'home';
+          }
+        }
+        if (state.screen === 'question' || state.screen === 'card') {
+          state.answered = false;
+          state.selected = '';
+        }
+      } catch (e2) {
+        state = defaultState();
+      }
     }
-    try {
-      var obj = JSON.parse(raw);
-      state = defaultState();
-      for (var k in obj) {
-        if (obj.hasOwnProperty(k)) {
-          state[k] = obj[k];
-        }
+    if (state.bound && state.screen === 'login') {
+      state.screen = 'home';
+    }
+    var qs = window.location.search || '';
+    if (qs.indexOf('c=' + LOGIN_CODE) >= 0) {
+      state.bound = true;
+      if (state.screen === 'login') {
+        state.screen = 'home';
       }
-      if (!state.task || !state.task.length) {
-        if (state.screen !== 'login' && state.screen !== 'home') {
-          state.screen = 'home';
-        }
-      }
-      if (state.screen === 'question' || state.screen === 'card') {
-        state.answered = false;
-        state.selected = '';
-      }
-    } catch (e2) {
-      state = defaultState();
+      save();
     }
   }
 
@@ -410,84 +499,6 @@
     return (item.type === 'new' ? '新词答题' : '复习') + ' ' + (state.idx + 1) + ' / ' + state.task.length;
   }
 
-  function topbar(left, right) {
-    return '<table class="topbar"><tr><td>' + left + '</td><td class="right">' + right + '</td></tr></table>';
-  }
-
-  function viewLogin() {
-    var cells = '';
-    var i;
-    for (i = 0; i < 6; i++) {
-      var ch = state.code.charAt(i);
-      cells = cells + '<td class="codecell" id="c' + i + '">' + (ch ? ch : '&nbsp;') + '</td>';
-    }
-    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清空', '0', '删除'];
-    var rows = '';
-    var r;
-    var c;
-    for (r = 0; r < 4; r++) {
-      rows = rows + '<tr>';
-      for (c = 0; c < 3; c++) {
-        rows = rows + '<td><button type="button" class="key" id="k' + r + '' + c + '">' + keys[r * 3 + c] + '</button></td>';
-      }
-      rows = rows + '</tr>';
-    }
-    var html = '';
-    html = html + topbar('儿童学习入口', '<span>家长请用家长端</span>');
-    html = html + '<h1 class="title">输入 6 位学习码</h1>';
-    html = html + '<p class="hint">学习码由家长提供，本次演示为 123456。</p>';
-    html = html + '<table class="codebox"><tr>' + cells + '</tr></table>';
-    html = html + '<p class="err" id="msg">' + state.message + '</p>';
-    html = html + '<table class="keypad">' + rows + '</table>';
-    html = html + '<button type="button" class="primary" id="loginBtn"' + (state.code.length === 6 ? '' : ' disabled="disabled"') + '>进入学习</button>';
-    html = html + '<p class="smallnote">这是真机测试版，学习记录只保存在这台设备上，不会上传。</p>';
-    return html;
-  }
-
-  function viewHome() {
-    var preview = (state.task && state.task.length) ? state.task : buildTask();
-    var total = preview.length;
-    var newCount = 0;
-    var pi;
-    for (pi = 0; pi < preview.length; pi++) {
-      if (preview[pi].type === 'new') {
-        newCount = newCount + 1;
-      }
-    }
-    var html = '';
-    if (state.finished) {
-      html = html + topbar('你好，小小', '已获得 1 颗星');
-      html = html + '<h1 class="title">今天的学习已完成</h1>';
-      html = html + '<div class="bigcard"><p class="bigline">连续学习 1 天</p><p class="bigline">获得 1 颗星</p></div>';
-      html = html + '<p class="hint">明天再来复习。现在可以回到 Kindle 看书。</p>';
-      html = html + '<button type="button" class="primary" id="resultBtn">再看一次结果</button>';
-    } else if (state.started) {
-      html = html + topbar('你好，小小', '今日任务');
-      html = html + '<h1 class="title">继续今天的学习</h1>';
-      html = html + '<p class="hint">已完成 ' + state.idx + ' / ' + total + ' 题，接着上次的位置继续。</p>';
-      html = html + '<button type="button" class="primary" id="startBtn">继续学习</button>';
-    } else {
-      html = html + topbar('你好，小小', '今日任务');
-      html = html + '<h1 class="title">准备好学习了吗？</h1>';
-      html = html + '<p class="hint">今天有 ' + newCount + ' 个新词和 ' + (total - newCount) + ' 个复习词，一共 ' + total + ' 道题，没有倒计时。</p>';
-      html = html + '<button type="button" class="primary" id="startBtn">开始学习</button>';
-    }
-    html = html + '<button type="button" class="secondary" id="logoutBtn">退出学习入口</button>';
-    return html;
-  }
-
-  function viewCard() {
-    var item = state.task[state.idx];
-    var w = WORDS[item.key];
-    var html = '';
-    html = html + topbar('新词 ' + (state.idx + 1) + ' / ' + countNew(), '<button type="button" class="small" id="pauseBtn">暂停</button>');
-    html = html + '<div class="word">' + w.word + '</div>';
-    html = html + '<div class="meaning">' + w.meaning + '</div>';
-    html = html + '<div class="example">' + w.example + '</div>';
-    html = html + '<button type="button" class="primary" id="knowBtn">我认识了</button>';
-    return html;
-  }
-
   function nextLabel() {
     if (state.inRetry) {
       return state.retryIdx === state.retry.length - 1 ? '完成重练' : '下一题';
@@ -501,39 +512,6 @@
     return '查看结果';
   }
 
-  function viewQuestion() {
-    var q = makeQuestion(currentItem(), currentSeq());
-    var html = '';
-    html = html + topbar(progressLabel(), '<button type="button" class="small" id="pauseBtn">暂停</button>');
-    html = html + '<p class="direction">' + q.direction + '</p>';
-    html = html + '<div class="' + (q.askEnglish ? 'word' : 'meaning-big') + '">' + q.prompt + '</div>';
-    var i;
-    for (i = 0; i < q.options.length; i++) {
-      var cls = 'opt';
-      if (state.answered) {
-        if (q.options[i].correct) {
-          cls = 'opt ok2';
-        } else if (state.selected === q.options[i].key) {
-          cls = 'opt bad';
-        }
-      }
-      html = html + '<button type="button" class="' + cls + '" id="opt' + i + '">' + q.options[i].label + '</button>';
-    }
-    html = html + '<div class="feedback" id="feedback">';
-    if (state.answered) {
-      html = html + feedbackText(q);
-    } else {
-      html = html + '&nbsp;';
-    }
-    html = html + '</div>';
-    html = html + '<div id="nextWrap">';
-    if (state.answered) {
-      html = html + '<button type="button" class="primary" id="nextBtn">' + nextLabel() + '</button>';
-    }
-    html = html + '</div>';
-    return html;
-  }
-
   function feedbackText(q) {
     if (state.selected === q.answerKey) {
       return '答对了。';
@@ -541,33 +519,126 @@
     return '这次不对，正确答案是「' + q.answerLabel + '」。';
   }
 
-  function updateQuestion() {
-    var q = makeQuestion(currentItem(), currentSeq());
-    var i;
-    for (i = 0; i < q.options.length; i++) {
-      var el = document.getElementById('opt' + i);
-      if (el) {
-        if (q.options[i].correct) {
-          el.className = 'opt ok2';
-        } else if (state.selected === q.options[i].key) {
-          el.className = 'opt bad';
-        } else {
-          el.className = 'opt';
-        }
-      }
+  function setText(id, txt) {
+    var el = document.getElementById(id);
+    if (!el) {
+      return;
     }
-    var fb = document.getElementById('feedback');
-    if (fb) {
-      fb.innerHTML = feedbackText(q);
-    }
-    var wrap = document.getElementById('nextWrap');
-    if (wrap && !document.getElementById('nextBtn')) {
-      wrap.innerHTML = '<button type="button" class="primary" id="nextBtn">' + nextLabel() + '</button>';
-      onTap(document.getElementById('nextBtn'), advance);
+    if (typeof el.textContent === 'string') {
+      el.textContent = txt;
+    } else {
+      el.innerHTML = txt;
     }
   }
 
-  function viewResult() {
+  function showPanel(id) {
+    var ids = ['p-login', 'p-home', 'p-card', 'p-question', 'p-result'];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el) {
+        el.className = (ids[i] === id) ? 'panel on' : 'panel';
+      }
+    }
+  }
+
+  function updateLoginPanel() {
+    var i;
+    for (i = 0; i < 6; i++) {
+      var ch = state.code.charAt(i);
+      setText('c' + i, ch ? ch : '\u00a0');
+    }
+    setText('loginMsg', state.message ? state.message : '\u00a0');
+    var btn = document.getElementById('loginBtn');
+    if (btn) {
+      btn.disabled = (state.code.length !== 6);
+    }
+  }
+
+  function updateHome() {
+    var preview = (state.task && state.task.length) ? state.task : buildTask();
+    var total = preview.length;
+    var newCount = 0;
+    var i;
+    for (i = 0; i < preview.length; i++) {
+      if (preview[i].type === 'new') {
+        newCount = newCount + 1;
+      }
+    }
+    var card = document.getElementById('homeCard');
+    var foot = document.getElementById('homeFoot');
+    var startBtn = document.getElementById('startBtn');
+    var resultBtn = document.getElementById('resultBtn');
+    setText('homeRight', '今日任务');
+    if (state.finished) {
+      setText('homeRight', '已获得 1 颗星');
+      setText('homeTitle', '今天的学习已完成');
+      setText('homeHint', '\u00a0');
+      if (card) { card.style.display = 'block'; }
+      if (foot) { foot.style.display = 'block'; }
+      if (startBtn) { startBtn.style.display = 'none'; }
+      if (resultBtn) { resultBtn.style.display = 'block'; }
+      return;
+    }
+    if (card) { card.style.display = 'none'; }
+    if (foot) { foot.style.display = 'none'; }
+    if (resultBtn) { resultBtn.style.display = 'none'; }
+    if (startBtn) { startBtn.style.display = 'block'; }
+    if (state.started) {
+      setText('homeTitle', '继续今天的学习');
+      setText('homeHint', '已完成 ' + state.idx + ' / ' + total + ' 题，接着上次的位置继续。');
+      if (startBtn) { setText('startBtn', '继续学习'); }
+    } else {
+      setText('homeTitle', '准备好学习了吗？');
+      setText('homeHint', '今天有 ' + newCount + ' 个新词和 ' + (total - newCount) + ' 个复习词，一共 ' + total + ' 道题，没有倒计时。');
+      if (startBtn) { setText('startBtn', '开始学习'); }
+    }
+  }
+
+  function updateCard() {
+    var item = state.task[state.idx];
+    var w = WORDS[item.key];
+    setText('cardTop', '新词 ' + (state.idx + 1) + ' / ' + countNew());
+    setText('cardWord', w.word);
+    setText('cardMeaning', w.meaning);
+    setText('cardExample', w.example);
+  }
+
+  function updateQuestion() {
+    var q = makeQuestion(currentItem(), currentSeq());
+    setText('qTop', progressLabel());
+    setText('qDirection', q.direction);
+    var prompt = document.getElementById('qPrompt');
+    if (prompt) {
+      prompt.className = q.askEnglish ? 'word' : 'meaning-big';
+      setText('qPrompt', q.prompt);
+    }
+    var i;
+    for (i = 0; i < 4; i++) {
+      var el = document.getElementById('opt' + i);
+      if (el) {
+        var cls = 'opt';
+        if (state.answered) {
+          if (q.options[i].correct) {
+            cls = 'opt ok2';
+          } else if (state.selected === q.options[i].key) {
+            cls = 'opt bad';
+          }
+        }
+        el.className = cls;
+        setText('opt' + i, q.options[i].label);
+      }
+    }
+    setText('feedback', state.answered ? feedbackText(q) : '\u00a0');
+    var nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) {
+      nextBtn.style.display = state.answered ? 'block' : 'none';
+      if (state.answered) {
+        setText('nextBtn', nextLabel());
+      }
+    }
+  }
+
+  function updateResult() {
     var wrong = '';
     var i;
     for (i = 0; i < state.retry.length; i++) {
@@ -576,59 +647,29 @@
       }
       wrong = wrong + WORDS[state.retry[i].key].word + '（' + WORDS[state.retry[i].key].meaning + '）';
     }
-    var html = '';
-    html = html + topbar('本次学习结果', '已保存');
-    html = html + '<h1 class="title">任务完成，获得 1 颗星</h1>';
-    html = html + '<table class="stats"><tr>';
-    html = html + '<td><div class="num">' + state.firstCorrect + ' / ' + state.firstAnswered + '</div><div class="cap">首次答对</div></td>';
-    html = html + '<td><div class="num">1 天</div><div class="cap">连续学习</div></td>';
-    html = html + '</tr></table>';
-    html = html + '<p class="hint">' + (wrong ? '需要继续巩固：' + wrong : '这次没有首次答错的单词。') + '</p>';
-    html = html + '<p class="hint">答错不扣星星，之后还会再见到这些词。</p>';
-    html = html + '<button type="button" class="primary" id="homeBtn">回到首页</button>';
-    return html;
+    setText('rScore', state.firstCorrect + ' / ' + state.firstAnswered);
+    setText('rWrong', wrong ? '需要继续巩固：' + wrong : '这次没有首次答错的单词。');
   }
 
-  function render() {
+  function go() {
     if (!state.task) {
       state.task = [];
     }
-    var html = '';
     if (state.screen === 'login') {
-      html = viewLogin();
+      updateLoginPanel();
+      showPanel('p-login');
     } else if (state.screen === 'home') {
-      html = viewHome();
+      updateHome();
+      showPanel('p-home');
     } else if (state.screen === 'card') {
-      html = viewCard();
+      updateCard();
+      showPanel('p-card');
     } else if (state.screen === 'question') {
-      html = viewQuestion();
+      updateQuestion();
+      showPanel('p-question');
     } else {
-      html = viewResult();
-    }
-    document.getElementById('screen').innerHTML = html;
-    bindCurrent();
-  }
-
-  function updateLogin() {
-    var i;
-    for (i = 0; i < 6; i++) {
-      var cell = document.getElementById('c' + i);
-      if (cell) {
-        var ch = state.code.charAt(i);
-        if (typeof cell.textContent === 'string') {
-          cell.textContent = ch ? ch : '';
-        } else {
-          cell.innerHTML = ch ? ch : '&nbsp;';
-        }
-      }
-    }
-    var msg = document.getElementById('msg');
-    if (msg) {
-      msg.innerHTML = state.message;
-    }
-    var btn = document.getElementById('loginBtn');
-    if (btn) {
-      btn.disabled = (state.code.length !== 6);
+      updateResult();
+      showPanel('p-result');
     }
   }
 
@@ -641,32 +682,22 @@
     } else if (state.code.length < 6) {
       state.code = state.code + k;
     }
-    updateLogin();
+    updateLoginPanel();
   }
 
   function doLogin() {
     if (state.code !== LOGIN_CODE) {
       state.message = '学习码不正确，请和家长确认。';
       state.code = '';
-      render();
+      updateLoginPanel();
       return;
     }
     state.code = '';
     state.message = '';
+    state.bound = true;
     state.screen = 'home';
     save();
-    render();
-  }
-
-  function startTask() {
-    if (!state.task.length) {
-      state.task = buildTask();
-    }
-    state.started = true;
-    state.idx = 0;
-    goToCurrent();
-    save();
-    render();
+    go();
   }
 
   function goToCurrent() {
@@ -685,6 +716,17 @@
     state.pausedScreen = '';
   }
 
+  function startTask() {
+    if (!state.task.length) {
+      state.task = buildTask();
+    }
+    state.started = true;
+    state.idx = 0;
+    goToCurrent();
+    save();
+    go();
+  }
+
   function resume() {
     if (state.pausedScreen === 'card' || state.pausedScreen === 'question') {
       state.screen = state.pausedScreen;
@@ -692,14 +734,14 @@
       goToCurrent();
     }
     save();
-    render();
+    go();
   }
 
   function pause() {
     state.pausedScreen = state.screen;
     state.screen = 'home';
     save();
-    render();
+    go();
   }
 
   function chooseOption(index) {
@@ -727,7 +769,7 @@
     state.inRetry = false;
     state.pausedScreen = '';
     save();
-    render();
+    go();
   }
 
   function advance() {
@@ -737,7 +779,7 @@
         state.answered = false;
         state.selected = '';
         save();
-        render();
+        go();
       } else {
         finish();
       }
@@ -747,7 +789,7 @@
       state.idx = state.idx + 1;
       goToCurrent();
       save();
-      render();
+      go();
       return;
     }
     if (state.retry.length > 0) {
@@ -755,11 +797,20 @@
       state.retryIdx = 0;
       state.answered = false;
       state.selected = '';
+      state.screen = 'question';
       save();
-      render();
+      go();
       return;
     }
     finish();
+  }
+
+  function logout() {
+    try {
+      window.localStorage.removeItem(LS_KEY);
+    } catch (e) {}
+    state = defaultState();
+    go();
   }
 
   function onTap(el, fn) {
@@ -786,74 +837,57 @@
     };
   }
 
-  function bindCurrent() {
+  function init() {
     var i;
-    if (state.screen === 'login') {
-      var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清空', '0', '删除'];
-      for (i = 0; i < 12; i++) {
-        (function (id, label) {
-          onTap(document.getElementById(id), function () {
-            pressKey(label);
-          });
-        })('k' + Math.floor(i / 3) + '' + (i % 3), keys[i]);
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '清空', '0', '删除'];
+    for (i = 0; i < 12; i++) {
+      (function (id, label) {
+        onTap(document.getElementById(id), function () {
+          pressKey(label);
+        });
+      })('k' + Math.floor(i / 3) + '' + (i % 3), keys[i]);
+    }
+    onTap(document.getElementById('loginBtn'), doLogin);
+    onTap(document.getElementById('startBtn'), function () {
+      if (state.started) {
+        resume();
+      } else {
+        startTask();
       }
-      onTap(document.getElementById('loginBtn'), doLogin);
-      return;
+    });
+    onTap(document.getElementById('resultBtn'), function () {
+      state.screen = 'result';
+      go();
+    });
+    onTap(document.getElementById('logoutBtn'), logout);
+    onTap(document.getElementById('knowBtn'), function () {
+      state.screen = 'question';
+      state.answered = false;
+      state.selected = '';
+      state.pausedScreen = '';
+      save();
+      go();
+    });
+    onTap(document.getElementById('pauseBtnCard'), pause);
+    onTap(document.getElementById('pauseBtnQ'), pause);
+    for (i = 0; i < 4; i++) {
+      (function (idx) {
+        onTap(document.getElementById('opt' + idx), function () {
+          chooseOption(idx);
+        });
+      })(i);
     }
-    if (state.screen === 'home') {
-      onTap(document.getElementById('startBtn'), function () {
-        if (state.started) {
-          resume();
-        } else {
-          startTask();
-        }
-      });
-      onTap(document.getElementById('resultBtn'), function () {
-        state.screen = 'result';
-        render();
-      });
-      onTap(document.getElementById('logoutBtn'), function () {
-        try {
-          window.localStorage.removeItem(LS_KEY);
-        } catch (e) {}
-        state = defaultState();
-        render();
-      });
-      return;
-    }
-    if (state.screen === 'card') {
-      onTap(document.getElementById('knowBtn'), function () {
-        state.screen = 'question';
-        state.answered = false;
-        state.selected = '';
-        state.pausedScreen = '';
-        save();
-        render();
-      });
-      onTap(document.getElementById('pauseBtn'), pause);
-      return;
-    }
-    if (state.screen === 'question') {
-      for (i = 0; i < 4; i++) {
-        (function (idx) {
-          onTap(document.getElementById('opt' + idx), function () {
-            chooseOption(idx);
-          });
-        })(i);
-      }
-      onTap(document.getElementById('nextBtn'), advance);
-      onTap(document.getElementById('pauseBtn'), pause);
-      return;
-    }
+    onTap(document.getElementById('nextBtn'), advance);
     onTap(document.getElementById('homeBtn'), function () {
       state.screen = 'home';
       save();
-      render();
+      go();
     });
   }
 
   load();
-  render();
+  init();
+  go();
 })();
 </script>
 </body>
